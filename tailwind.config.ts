@@ -62,7 +62,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom colors
+        // Custom Theme Colors
         "cyber-green": "#09FBD3",
         "cyber-blue": "#08F7FE",
         "cyber-pink": "#FE53BB",
@@ -75,6 +75,20 @@ export default {
           light: "#264D49",
           glow: "#36FF9C",
           accent: "#00E0B0",
+        },
+        defi: {
+          dark: "#121217",
+          green: {
+            DEFAULT: "#ACFF7F",
+            light: "#CBF9A0",
+            neon: "#B0FF58",
+            dark: "#43B309",
+          },
+          gray: {
+            DEFAULT: "#222228",
+            dark: "#1A1A1F",
+            light: "#32323A",
+          },
         },
       },
       borderRadius: {
@@ -107,13 +121,29 @@ export default {
           "0%": { transform: "translateX(100%)" },
           "100%": { transform: "translateX(0)" },
         },
+        "slide-up": {
+          "0%": { transform: "translateY(100%)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
         "pulse-glow": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.7" },
+          "0%, 100%": { opacity: "1", filter: "brightness(1)" },
+          "50%": { opacity: "0.8", filter: "brightness(1.3)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 10px 2px rgba(9, 251, 211, 0.3)" },
+          "50%": { boxShadow: "0 0 20px 5px rgba(9, 251, 211, 0.6)" },
+        },
+        "rotate-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-10px)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-500px 0" },
+          "100%": { backgroundPosition: "500px 0" },
         },
         "zoom-in-out": {
           "0%": { transform: "scale(1)" },
@@ -130,14 +160,6 @@ export default {
           "50%": { transform: "scale(1.2)", opacity: "0.7" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
-        "glow-pulse": {
-          "0%, 100%": { boxShadow: "0 0 10px 2px rgba(9, 251, 211, 0.3)" },
-          "50%": { boxShadow: "0 0 20px 5px rgba(9, 251, 211, 0.6)" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-500px 0" },
-          "100%": { backgroundPosition: "500px 0" },
-        },
         "scale-up": {
           "0%": { transform: "scale(0.8)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
@@ -150,13 +172,15 @@ export default {
         "fade-in-up": "fade-in-up 0.8s ease-out forwards",
         "fade-out": "fade-out 0.6s ease-out forwards",
         "slide-in-right": "slide-in-right 0.5s ease-out forwards",
-        "pulse-glow": "pulse-glow 2s infinite",
+        "slide-up": "slide-up 0.5s ease-out",
+        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
+        "rotate-slow": "rotate-slow 20s linear infinite",
         float: "float 6s ease-in-out infinite",
+        shimmer: "shimmer 2s infinite linear",
         "zoom-in-out": "zoom-in-out 2s ease-in-out",
         "light-speed": "light-speed 0.8s ease-out",
         "checkmark-appear": "checkmark-appear 0.5s ease-out",
         "glow-pulse": "glow-pulse 2s infinite",
-        shimmer: "shimmer 2s infinite linear",
         "scale-up": "scale-up 0.4s ease-out",
       },
       backgroundImage: {
@@ -167,6 +191,10 @@ export default {
           "linear-gradient(135deg, rgba(9, 251, 211, 0.2) 0%, rgba(254, 83, 187, 0.2) 100%)",
         "shimmer-effect":
           "linear-gradient(90deg, transparent, rgba(9, 251, 211, 0.3), transparent)",
+        "neon-glow":
+          "radial-gradient(circle, rgba(172, 255, 127, 0.3) 0%, rgba(172, 255, 127, 0.1) 40%, rgba(0, 0, 0, 0) 70%)",
+        "card-gradient":
+          "linear-gradient(to bottom, rgba(41, 41, 51, 0.8), rgba(28, 28, 36, 0.8))",
       },
       backdropBlur: {
         xs: "2px",

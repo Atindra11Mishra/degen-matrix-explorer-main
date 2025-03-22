@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { usePrivy } from "@privy-io/react-auth";
+import CyberButton from '@/components/CyberButton';
 
-function Verida() {
+interface VeridaProps {
+  onConnectionChange?: (isConnected: boolean) => void;
+}
+
+function Verida({ onConnectionChange }: VeridaProps) {
   const location = useLocation();
   const { logout, user } = usePrivy();
   const [connected, setConnected] = useState(false);
@@ -16,6 +21,14 @@ function Verida() {
   const [manualMode, setManualMode] = useState(false);
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
+  // Notify parent component when connection status changes
+  useEffect(() => {
+    if (onConnectionChange) {
+      onConnectionChange(connected);
+    }
+  }, [connected, onConnectionChange]);
+
+  // Check for connection params in URL
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const did = searchParams.get('did');
@@ -136,14 +149,10 @@ function Verida() {
     fetchFOMOscore();
   }, [fomoUser]);
 
-  
-
   const connectWithVerida = () => {
     const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
     const callbackUrl = `${backendUrl}/auth/callback`;
     
-     
-     
     const authUrl = `https://app.verida.ai/auth?scopes=api%3Ads-query&scopes=api%3Asearch-universal&scopes=ds%3Asocial-email&scopes=api%3Asearch-ds&scopes=api%3Asearch-chat-threads&scopes=ds%3Ar%3Asocial-chat-group&scopes=ds%3Ar%3Asocial-chat-message&redirectUrl=${encodeURIComponent(callbackUrl)}&appDID=did%3Avda%3Amainnet%3A0x87AE6A302aBf187298FC1Fa02A48cFD9EAd2818D`;
 
     console.log('Redirecting to Verida:', authUrl);
@@ -155,7 +164,7 @@ function Verida() {
     setFomoData(null);
     setError(null);
     setLoading(false);
-    setConnected(false)
+    setConnected(false);
     window.location.href = 'varidapage';
   };
 
@@ -170,7 +179,7 @@ function Verida() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center  h-24">
+      <div className="flex justify-center items-center h-24">
         <div className="text-center">
           <h2 className="text-xl font-semibold"></h2>
           <div className="animate-spin h-10 w-10 border-t-4 border-blue-500 rounded-full mx-auto ml-6"></div>
@@ -181,7 +190,7 @@ function Verida() {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center  h-24">
+      <div className="flex justify-center items-center h-24">
         <div className="bg-red-100 p-6 rounded-lg shadow-md text-center">
           <h2 className="text-xl font-semibold text-red-500">Oops! Something went wrong</h2>
           <p className="mt-2 text-red-700">{error}</p>
@@ -199,26 +208,27 @@ function Verida() {
         <div className="text-xl font-bold text-cyan-400">
           Verida Connected
         </div>
-
-        </div>
-     
+      </div>
     );
   }
 
   return (
-    <div className="relative z-20 bg-gradient-to-b from-gray-900 to-black bg-opacity-60 backdrop-blur-xl shadow-lg rounded-xl p-4 w-[230px] mt-4 border border-cyan-400 transition-all duration-500 ease-in-out flex flex-col items-center">
-      {connected ? (
-        <div className="text-xl font-bold text-cyan-400">
-          Verida Connected
-        </div>
-      ) : (
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all transform hover:scale-105"
-          onClick={connectWithVerida}
-        >
-          Connect with Verida
-        </button>
-      )}
+    <div className="w-full px-4">
+      <div className="w-full border-cyan-400/30 transition-all duration-300">
+        {!connected ? (
+          <CyberButton
+            onClick={connectWithVerida}
+            variant="accent"
+            className="w-full"
+          >
+            Connect with Verida
+          </CyberButton>
+        ) : (
+          <div className="text-center text-cyan-300 font-semibold text-lg py-2">
+            Verida Connected
+          </div>
+        )}
+      </div>
     </div>
   );
 }

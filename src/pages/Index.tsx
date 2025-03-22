@@ -155,6 +155,7 @@ const Index = () => {
               Measure your crypto influence and discover where you rank in the digital frontier.
             </motion.p>
 
+            {user?.email && (
             <GlassmorphicCard className="max-w-md w-full mb-8 relative overflow-hidden group">
               <div className="absolute top-3 right-3">
                 <Badge variant="outline" className="bg-cyber-green/10 text-cyber-green border-cyber-green/30 px-2 py-1">
@@ -198,6 +199,7 @@ const Index = () => {
               </div>
             </GlassmorphicCard>
 
+           )}
             <div className="space-y-4 w-full max-w-md">
               <CyberButton 
                 onClick={() => navigate('/dashboard')} 

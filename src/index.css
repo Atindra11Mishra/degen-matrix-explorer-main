@@ -1,13 +1,22 @@
+/* ============================== */
+/* 📦 Import Fonts */
+/* ============================== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
+/* ============================== */
+/* 🧩 Tailwind Directives */
+/* ============================== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base Layer */
+/* ============================== */
+/* 🎨 Base Layer: CSS Variables */
+/* ============================== */
 @layer base {
   :root {
+    /* 🟢 Cyberpunk Theme */
     --background: 158 29% 5%;
     --foreground: 0 0% 98%;
     --card: 158 29% 5%;
@@ -28,6 +37,39 @@
     --input: 160 42% 20%;
     --ring: 156 100% 50%;
     --radius: 1rem;
+
+    /* ☀️ Light Theme (merged) */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* 🌙 Dark Theme overrides */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
   }
 
   * {
@@ -44,6 +86,7 @@
 
   body {
     @apply bg-black text-foreground overflow-x-hidden min-h-screen;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -51,8 +94,11 @@
   }
 }
 
-/* Components Layer */
+/* ============================== */
+/* 🧱 Components Layer */
+/* ============================== */
 @layer components {
+  /* 🧊 Glassmorphism */
   .glass {
     @apply backdrop-blur-lg bg-white/5 border border-white/10 shadow-lg;
   }
@@ -69,10 +115,11 @@
     @apply absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent;
   }
 
-  .glassmorphic {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl;
+  .glass-panel {
+    @apply bg-defi-gray bg-opacity-30 backdrop-blur-lg border border-white/10 rounded-xl;
   }
 
+  /* ✨ Glow Effects */
   .cyber-glow {
     text-shadow: 0 0 5px theme('colors.cyber-green'), 0 0 10px theme('colors.cyber-green');
   }
@@ -85,6 +132,29 @@
     text-shadow: 0 0 5px theme('colors.cyber-pink'), 0 0 10px theme('colors.cyber-pink');
   }
 
+  .glow-effect {
+    position: relative;
+  }
+
+  .glow-effect::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(172, 255, 127, 0.4) 0%, rgba(172, 255, 127, 0) 70%);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+  }
+
+  .glow-effect:hover::before {
+    opacity: 1;
+  }
+
+  /* 🕹️ Cyber Button */
   .cyber-button {
     @apply relative overflow-hidden bg-transparent border border-cyber-green hover:border-cyber-pink text-cyber-green hover:text-cyber-pink 
     transition-all duration-300 ease-in-out px-6 py-2 rounded-md font-medium;
@@ -99,19 +169,7 @@
     @apply scale-x-100;
   }
 
-  .shimmer {
-    @apply relative overflow-hidden;
-  }
-
-  .shimmer::before {
-    content: '';
-    @apply absolute top-0 -left-[100%] w-[200%] h-full bg-shimmer-effect animate-shimmer;
-  }
-
-  .connector-line {
-    @apply absolute w-0.5 bg-gradient-to-b from-cyber-green/50 to-transparent h-16 left-1/2 -translate-x-1/2;
-  }
-
+  /* 🔷 Utility Buttons */
   .btn-primary {
     @apply relative px-8 py-3 text-white font-medium rounded-full bg-degen-accent hover:bg-degen-accent/90 
     transition-all duration-300 ease-out overflow-hidden shadow-[0_0_15px_rgba(54,255,156,0.3)];
@@ -127,21 +185,25 @@
     @apply transform scale-95;
   }
 
-  .text-glow {
-    text-shadow: 0 0 10px rgba(54, 255, 156, 0.5);
+  /* 🧠 Custom Fonts */
+  .monument-font {
+    font-family: 'MonumentExtended', sans-serif;
   }
 
-  .light-streaks {
-    @apply absolute inset-0 overflow-hidden opacity-10;
-    background-image: 
-      linear-gradient(45deg, transparent 45%, rgba(54, 255, 156, 0.5) 50%, transparent 55%),
-      linear-gradient(135deg, transparent 45%, rgba(54, 255, 156, 0.5) 50%, transparent 55%);
-    background-size: 200px 200px;
-    animation: light-streaks-animation 8s linear infinite;
+  /* 🔲 Border & Shadow */
+  .neo-shadow {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5),
+                0 1px 2px rgba(255, 255, 255, 0.05) inset;
+  }
+
+  .connector-line {
+    @apply absolute w-0.5 bg-gradient-to-b from-cyber-green/50 to-transparent h-16 left-1/2 -translate-x-1/2;
   }
 }
 
-/* Animations */
+/* ============================== */
+/* ⚙️ Utilities + Animations */
+/* ============================== */
 @layer utilities {
   @keyframes light-streaks-animation {
     0% { background-position: 0 0; }
@@ -179,6 +241,11 @@
     animation: shimmer 2s infinite linear;
   }
 
+  .shimmer::before {
+    content: '';
+    @apply absolute top-0 -left-[100%] w-[200%] h-full bg-shimmer-effect animate-shimmer;
+  }
+
   .scanning-effect {
     position: relative;
     overflow: hidden;
@@ -189,4 +256,36 @@
     @apply absolute top-0 left-0 right-0 h-1 bg-degen-glow opacity-70;
     animation: scan 1.5s ease-in-out infinite;
   }
+
+  .light-streaks {
+    @apply absolute inset-0 overflow-hidden opacity-10;
+    background-image: 
+      linear-gradient(45deg, transparent 45%, rgba(54, 255, 156, 0.5) 50%, transparent 55%),
+      linear-gradient(135deg, transparent 45%, rgba(54, 255, 156, 0.5) 50%, transparent 55%);
+    background-size: 200px 200px;
+    animation: light-streaks-animation 8s linear infinite;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px rgba(54, 255, 156, 0.5);
+  }
+}
+
+/* ============================== */
+/* 📦 Fonts (Self-hosted) */
+/* ============================== */
+@font-face {
+  font-family: 'MonumentExtended';
+  src: url('/fonts/MonumentExtended-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MonumentExtended';
+  src: url('/fonts/MonumentExtended-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
 }

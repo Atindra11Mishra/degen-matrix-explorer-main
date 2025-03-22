@@ -20,6 +20,8 @@ const twitterTasks = [
   "Detecting Viral Impact Score",
 ];
 
+
+
 const TwitterConnectPage = () => {
   const navigate = useNavigate();
   const { setTwitterScore, setTwitterConnected } = useScore();
@@ -31,12 +33,39 @@ const TwitterConnectPage = () => {
     false,
   ]);
   const [completedScan, setCompletedScan] = useState(false);
-  const [score, setScore] = useState(0);
-  const targetScore = 4200;
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  const [targetScore, setTargetScore] = useState(0); // Dynamic score from backend
+const [score, setScore] = useState(0); // For animation
+
+const loginWithTwit = async () => {
+  try {
+    const result = await signInWithPopup(auth, twitterProvider);
+    setUser(result.user);
+    setError(null);
+
+    // 🎯 Fetch Twitter score from backend
+    const response = await fetch(`${apiBaseUrl}/api/score/get-score`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        twitterUsername: result.user.displayName
+      })
+    });
+
+    const data = await response.json();
+    const total = Math.round(data?.totalScore || 0);
+
+    setTargetScore(total); // Set real score for animation
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   // ✅ Use Privy (if needed)
   const { authenticated, user: privyUser } = usePrivy();
@@ -75,6 +104,13 @@ const TwitterConnectPage = () => {
     fetchScore();
   }, [user]);
 
+
+  useEffect(() => {
+    if (user && targetScore) {
+      handleConnect();
+    }
+  }, [user, targetScore]);
+  
   // ✅ Login with Twitter
   const loginWithTwitter = async () => {
     try {
@@ -189,15 +225,24 @@ const TwitterConnectPage = () => {
             </motion.p>
 
             {!user ? (
-              <button
-                onClick={loginWithTwitter}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-              >
-                Sign in with Twitter
-              </button>
-            ) : (
-              <p className="text-green-500"></p>
-            )}
+  <div className="flex flex-col items-center gap-2">
+    <button
+      onClick={loginWithTwitter}
+      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+    >
+      Sign in with Twitter
+    </button>
+    <button
+      onClick={() => navigate("/connect/wallet")}
+      className="mt-4 text-white/80 hover:text-white text-sm underline transition-opacity duration-200 ease-in-out"
+    >
+      Skip for now
+    </button>
+  </div>
+) : (
+  <p className="text-green-500"></p>
+)}
+
 
             {isConnecting && (
               <div className="text-left">
@@ -222,7 +267,9 @@ const TwitterConnectPage = () => {
                 <ScoreDisplay score={score} label="Points Earned" variant="primary" />
               </motion.div>
             )}
+            
           </GlassmorphicCard>
+          
         </div>
       </div>
     </PageTransition>

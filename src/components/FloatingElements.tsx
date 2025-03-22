@@ -88,10 +88,10 @@ const getPositions = (count: number, style: string = 'default') => {
       id: i,
       left,
       top,
-      scale: 0.4 + Math.random() * 0.3, // Slightly reduced scale for less clutter
-      opacity: 0.4 + Math.random() * 0.3, // Increased opacity range for better visibility
+      scale: 0.1 + Math.random() * 0.2, // Slightly reduced scale for less clutter
+      opacity: 0.2 + Math.random() * 0.3, // Increased opacity range for better visibility
       delay: Math.random() * 5,
-      duration: 15 + Math.random() * 20,
+      duration: 8 + Math.random() * 6,
     });
   }
   
@@ -115,7 +115,7 @@ const FloatingElements = ({ count = 15, type, className = '', positionStyle = 'd
     switch (elementType) {
       case 'tweets':
         return (
-          <div className="w-40 h-16 glass rounded-xl p-3 flex items-start space-x-2">
+          <div className="w-40 h-16 backdrop-blur-sm bg-white/5 border border-white/10 rounded-xl p-3 flex items-start space-x-2 shadow-sm">
             <Twitter size={16} className="text-blue-400 mt-1 flex-shrink-0" />
             <div className="flex-1 overflow-hidden">
               <div className="w-8 h-2 bg-white/40 rounded-full mb-2"></div>
@@ -127,7 +127,7 @@ const FloatingElements = ({ count = 15, type, className = '', positionStyle = 'd
         );
       case 'messages':
         return (
-          <div className="w-36 h-12 glass rounded-full p-3 flex items-center space-x-2">
+          <div className="w-36 h-12 backdrop-blur-sm bg-white/5 border border-white/10 rounded-full p-3 flex items-center space-x-2 shadow-sm">
             <MessageCircle size={14} className="text-blue-400 flex-shrink-0" />
             <div className="flex-1 overflow-hidden">
               <div className="text-xs text-white/70 font-mono truncate text-left">
@@ -138,7 +138,7 @@ const FloatingElements = ({ count = 15, type, className = '', positionStyle = 'd
         );
       case 'wallets':
         return (
-          <div className="max-w-[200px] glass h-10 px-3 py-2 rounded-md text-xs text-white/70 truncate font-mono flex items-center space-x-2">
+          <div className="max-w-[200px] h-10 px-3 py-2 backdrop-blur-sm bg-white/5 border border-white/10 rounded-md text-xs text-white/60 truncate font-mono flex items-center space-x-2 shadow-sm">
             <Wallet size={12} className="text-degen-glow flex-shrink-0" />
             <span>{getRandomContent(walletAddresses)}</span>
           </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -26,14 +25,15 @@ const TelegramConnectPage = () => {
   const [taskStatus, setTaskStatus] = useState<boolean[]>([false, false, false, false]);
   const [completedScan, setCompletedScan] = useState(false);
   const [score, setScore] = useState(0);
+  const [veridaStatus, setVeridaStatus] = useState<'disconnected' | 'connected'>('disconnected');
   const targetScore = 5250;
   
- 
-  
-  const handleConnect = () => {
+  // Animation sequence for after Verida connection
+  const startAnimationSequence = () => {
+    console.log("🚀 Starting Telegram animation sequence...");
     setIsConnecting(true);
     
-    // Simulate Telegram connection and scanning tasks
+    // Step 1: Task animation
     let currentTask = 0;
     const taskInterval = setInterval(() => {
       if (currentTask < taskStatus.length) {
@@ -47,8 +47,8 @@ const TelegramConnectPage = () => {
         clearInterval(taskInterval);
         setCompletedScan(true);
         
-        // Start incrementing score
-        let currentScore =  0;
+        // Step 2: Score animation
+        let currentScore = 0;
         const scoreIncrement = Math.ceil(targetScore / 50);
         const scoreInterval = setInterval(() => {
           currentScore += scoreIncrement;
@@ -56,8 +56,9 @@ const TelegramConnectPage = () => {
             currentScore = targetScore;
             clearInterval(scoreInterval);
             
-            // Wait a moment and then proceed to next page
+            // Step 3: Redirect after animation finishes
             setTimeout(() => {
+              console.log("✅ Animation complete, redirecting to /scorecard");
               setTelegramScore(targetScore);
               setTelegramConnected(true);
               navigate('/scorecard');
@@ -69,10 +70,33 @@ const TelegramConnectPage = () => {
     }, 800);
   };
   
+  // Handler for Verida connection status changes
+  const handleVeridaStatusChange = (status: boolean) => {
+    console.log("📱 Verida connection status:", status ? "connected" : "disconnected");
+    if (status) {
+      setVeridaStatus('connected');
+    } else {
+      setVeridaStatus('disconnected');
+    }
+  };
+  
+  // Start animation when Verida is connected
+  useEffect(() => {
+    if (veridaStatus === 'connected' && !isConnecting && !completedScan) {
+      console.log("🔄 Starting animation for connected Verida");
+      startAnimationSequence();
+    }
+  }, [veridaStatus, isConnecting, completedScan]);
+  
+  // Manual connect button (fallback)
+  const handleConnect = () => {
+    startAnimationSequence();
+  };
+  
   return (
     <PageTransition>
-     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden p-4">
-     <FloatingElements type="messages" count={20} />
+      <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden p-4">
+        <FloatingElements type="messages" count={20} />
         
         {/* Main content */}
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full max-w-md">
@@ -85,7 +109,7 @@ const TelegramConnectPage = () => {
             {[1, 2, 3, 4].map((_, i) => (
               <div 
                 key={i} 
-                className={`w-12 h-1 rounded-full ${i <= 1 ? 'bg-cyber-green/70' : 'bg-white/20'}`}
+                className={`w-12 h-1 rounded-full ${i <= 2 ? 'bg-cyber-green/70' : 'bg-white/20'}`}
               />
             ))}
           </motion.div>
@@ -108,7 +132,7 @@ const TelegramConnectPage = () => {
               transition={{ delay: 0.3 }}
               className="text-2xl font-bold mb-2 text-white"
             >
-              Connect Your Telegram
+              {isConnecting ? "Analyzing Your Telegram" : "Connect Your Telegram"}
             </motion.h2>
             
             <motion.p
@@ -117,20 +141,18 @@ const TelegramConnectPage = () => {
               transition={{ delay: 0.4 }}
               className="text-white/70 mb-6"
             >
-              Your community engagement matters. Let's analyze it!
+              {isConnecting 
+                ? "Your community engagement defines your social rank." 
+                : "Your community engagement matters. Let's analyze it!"}
             </motion.p>
             
-            {/* {!isConnecting && (
-              <CyberButton 
-               
-                className="w-full"
-                variant="secondary"
-                icon={<MessageSquare size={18} />}
-              >
-                 dsa
-              </CyberButton>
+            {!isConnecting && (
+              <div className="relative">
+                <Verida onConnectionChange={handleVeridaStatusChange} />
+              </div>
             )}
-          
+            
+            {/* Show Scanning Animation */}
             {isConnecting && (
               <div className="text-left">
                 {telegramTasks.map((task, index) => (
@@ -143,9 +165,19 @@ const TelegramConnectPage = () => {
                 ))}
               </div>
             )}
-             */}
-         <div className='relative left-14'><Verida/></div>
 
+            <div className="flex flex-col items-center gap-2 mt-4">
+              {!isConnecting && (
+                <button
+                  onClick={() => navigate("/scorecard")}
+                  className="mt-4 text-white/80 hover:text-white text-sm underline transition-opacity duration-200 ease-in-out"
+                >
+                  Skip for now
+                </button>
+              )}
+            </div>
+
+            {/* Show Score After Scan */}
             {completedScan && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
