@@ -1,15 +1,16 @@
 const express = require("express");
-const { CollectData, getTotalScore } = require('../controllers/NewScoreController.js');
+const { calculateScore,getTotalScore } = require("../controllers/scoreController.js");
+const {CollectData}= require('../controllers/NewScoreController.js')
 
 const router = express.Router();
 
-// Redirect old GET endpoint to use the new controller
-router.get("/get-score/:privyId/:username/:address", CollectData);
+// ✅ Use GET request & dynamic parameters
+router.get("/get-score/prop", calculateScore);
 
-// Main endpoint for score calculation
 router.post("/get-score", CollectData);
 
-// Total score endpoint
+
+
 router.get("/total-score/:privyId", getTotalScore);
 
 module.exports = router;

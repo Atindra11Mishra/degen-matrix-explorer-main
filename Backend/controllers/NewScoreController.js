@@ -68,10 +68,13 @@ async function CollectData(req, res) {
       // Fallback if telegramData is undefined
       const telegramGroups = telegramData.groups || [];
       const telegramMessages = telegramData.messages || [];
-  
+      const twitterData= userData
+     
+
       // Assume calculateScore is imported and defined correctly.
-      const scores = calculateScore(privyId, userData, walletData, telegramGroups, telegramMessages);
+      const scores = calculateScore({privyId, twitterData, walletData, telegramGroups, telegramMessages});
       console.log("🧮 Final Score Breakdown:", scores);
+    
 
        return res.json({ totalScore:scores.totalScore });
 
@@ -203,29 +206,43 @@ async function calculateScore({ privyId, twitterData, walletData, telegramGroups
   let telegramScore = 0;
 
   // ✅ Twitter Score
-  if (twitterData) {
-    try {
-      const twitter = twitterData.userData?.data?.user?.result;
+// ✅ Twitter Score
+if (twitterData) {
+  try {
+    const twitter = twitterData?.data?.user?.result?.legacy;
+    const twitterUser = twitterData?.data?.user?.result;
+    
+    if (twitter) {
+      console.log("📊 Twitter followers:", twitter.followers_count);
+      
       socialScore = (
-        (twitter?.followers_count || 0) * weights.followers +
-        ((twitter?.favourites_count || 0) + (twitter?.media_count || 0) + (twitter?.listed_count || 0)) * weights.engagement +
-        (twitterData.result?.is_blue_verified ? weights.verification : 0) +
-        (twitter?.statuses_count || 0) * weights.tweetFreq +
-        (twitterData.result?.creator_subscriptions_count || 0) * weights.subscriptions +
-        ((new Date() - new Date(twitter?.created_at || Date.now())) / (1000 * 60 * 60 * 24 * 365)) * weights.accountAge +
-        (twitter?.media_count || 0) * weights.media +
-        (twitter?.pinned_tweet_ids_str?.length > 0 ? weights.pinned : 0) +
-        (twitter?.friends_count || 0) * weights.friends +
-        (twitter?.listed_count || 0) * weights.listed +
-        (twitterData.result?.super_follow_eligible ? weights.superFollow : 0) +
-        (twitter?.retweet_count || 0) * weights.retweets +
-        (twitter?.quote_count || 0) * weights.quotes +
-        (twitter?.reply_count || 0) * weights.replies
+        (twitter.followers_count || 0) * weights.followers +
+        ((twitter.favourites_count || 0) + (twitter.media_count || 0) + (twitter.listed_count || 0)) * weights.engagement +
+        (twitterUser.is_blue_verified ? weights.verification : 0) +
+        (twitter.statuses_count || 0) * weights.tweetFreq +
+        (twitterUser.creator_subscriptions_count || 0) * weights.subscriptions +
+        ((new Date() - new Date(twitter.created_at || Date.now())) / (1000 * 60 * 60 * 24 * 365)) * weights.accountAge +
+        (twitter.media_count || 0) * weights.media +
+        (twitter.pinned_tweet_ids_str?.length > 0 ? weights.pinned : 0) +
+        (twitter.friends_count || 0) * weights.friends +
+        (twitter.listed_count || 0) * weights.listed +
+        (twitterUser.super_follow_eligible ? weights.superFollow : 0) +
+        (twitter.retweet_count || 0) * weights.retweets +
+        (twitter.quote_count || 0) * weights.quotes +
+        (twitter.reply_count || 0) * weights.replies
       );
-    } catch (err) {
-      console.error("❌ Error calculating Twitter score:", err.message);
+      
+      console.log("Twitter score calculated:", socialScore);
+    } else {
+      console.error("❌ Twitter legacy data not found");
+      socialScore = 0;
     }
+  } catch (err) {
+    console.error("❌ Error calculating Twitter score:", err.message);
+    socialScore = 0;
   }
+}
+
 
   // ✅ Wallet Score
   if (walletData) {
@@ -240,7 +257,7 @@ async function calculateScore({ privyId, twitterData, walletData, telegramGroups
         "transactionCount": walletData["Transaction Count"] || 0,
         "uniqueTokenInteractions": walletData["Unique Token Interactions"] || 0
       };
-
+      console.log("Wallet data", wallet);
       cryptoScore = (
         wallet.activeChains.length * weights.activeChains +
         wallet["Native Balance Result"] * weights.nativeBalance +
@@ -258,16 +275,16 @@ async function calculateScore({ privyId, twitterData, walletData, telegramGroups
   }
 
   // ✅ Telegram Score
-  if (telegramGroups && telegramMessages) {
+  if (telegramGroups && telegramMessages) { 
+
     try {
       const telegram = Array.isArray(telegramGroups.items) ? telegramGroups.items : [];
       const messages = Array.isArray(telegramMessages.items) ? telegramMessages.items : [];
 
-      communityScore = telegram.length * weights.groupCount;
-
+      communityScore = telegramGroups * weights.groupCount;
       telegramScore = (
-        telegram.length * weights.groupCount +
-        messages.length * weights.messageFreq +
+        telegramGroups * weights.groupCount +
+        telegramMessages * weights.messageFreq +
         messages.filter(m => m?.sourceData?.is_pinned).length * weights.pinnedMessages +
         messages.filter(m => m?.sourceData?.content?._ === "messagePhoto").length * weights.mediaMessages +
         messages.reduce((sum, m) => {
@@ -289,13 +306,15 @@ async function calculateScore({ privyId, twitterData, walletData, telegramGroups
 
   // ✅ Fallbacks: If any score is 0, assign a minimum default
   const safeScores = {
-    socialScore: socialScore === 0 ? 10 : socialScore,
+    socialScore: socialScore === 0 ? 10: socialScore,
     cryptoScore: cryptoScore === 0 ? 15 : cryptoScore,
     nftScore: nftScore === 0 ? 5 : nftScore,
     communityScore: communityScore === 0 ? 10 : communityScore,
     telegramScore: telegramScore === 0 ? 5 : telegramScore
   };
-  
+
+
+
 
   const totalScore = 
     Math.min(safeScores.socialScore, 50) +
@@ -310,39 +329,67 @@ async function calculateScore({ privyId, twitterData, walletData, telegramGroups
   };
 
   // ✅ Save or update DB
-  if (privyId) {
-    try {
-      let userScore = await Score.findOne({ privyId });
+  // if (privyId) {
+  //   try {
+  //     console.log(`Attempting to find score record for privyId: ${privyId}`);
+  //     let userScore = await Score.findOne({ privyId });
+      
+  //     if (!userScore) {
+  //       console.log(`No existing score found for ${privyId}, creating new record`);
+  //       userScore = new Score({
+  //         privyId,
+  //         email: email || "unknown@example.com", // Use email with fallback
+  //         username: twitterData?.data?.user?.result?.legacy?.screen_name || "unknown",
+  //         twitterScore: safeScores.socialScore,
+  //         cryptoScore: safeScores.cryptoScore,
+  //         nftScore: safeScores.nftScore,
+  //         telegramScore: safeScores.telegramScore,
+  //         communityScore: safeScores.communityScore,
+  //         totalScore
+  //       });
+  //     } else {
+  //       console.log(`Existing score found for ${privyId}, updating record`);
+        
+  //       // Update email if available
+  //       if (email) userScore.email = email;
+        
+  //       // Update username if Twitter data is available
+  //       if (twitterData?.data?.user?.result?.legacy?.screen_name) {
+  //         userScore.username = twitterData.data.user.result.legacy.screen_name;
+  //       }
+        
+  //       // Update scores based on available data
+  //       if (twitterData) userScore.twitterScore = safeScores.socialScore;
+  //       if (walletData) {
+  //         userScore.cryptoScore = safeScores.cryptoScore;
+  //         userScore.nftScore = safeScores.nftScore;
+  //       }
+  //       if (telegramGroups && telegramMessages) {
+  //         userScore.telegramScore = safeScores.telegramScore;
+  //         userScore.communityScore = safeScores.communityScore;
+  //       }
 
-      if (!userScore) {
-        userScore = new Score({
-          privyId,
-          twitterScore: safeScores.socialScore,
-          cryptoScore: safeScores.cryptoScore,
-          nftScore: safeScores.nftScore,
-          telegramScore: safeScores.telegramScore,
-          communityScore: safeScores.communityScore,
-          totalScore
-        });
-      } else {
-        if (twitterData) userScore.twitterScore = safeScores.socialScore;
-        if (walletData) {
-          userScore.cryptoScore = safeScores.cryptoScore;
-          userScore.nftScore = safeScores.nftScore;
-        }
-        if (telegramGroups && telegramMessages) {
-          userScore.telegramScore = safeScores.telegramScore;
-          userScore.communityScore = safeScores.communityScore;
-        }
+  //       userScore.totalScore = totalScore;
+  //     }
 
-        userScore.totalScore = totalScore;
-      }
-
-      await userScore.save();
-    } catch (err) {
-      console.error("❌ Error saving score to DB:", err.message);
-    }
-  }
+  //     console.log(`Saving score to database for ${privyId}`);
+  //     const savedScore = await userScore.save();
+  //     console.log("Score saved successfully:", savedScore);
+  //   } catch (err) {
+  //     console.error("❌ Error saving score to DB:", err.message);
+  //     console.error("Error stack:", err.stack);
+      
+  //     // More specific error checking
+  //     if (err.name === 'ValidationError') {
+  //       console.error("MongoDB validation error. Details:", err.errors);
+  //       // If there are specific validation issues, try to help fix them
+  //       for (let field in err.errors) {
+  //         console.error(`Field '${field}' error:`, err.errors[field].message);
+  //       }
+  //     }
+  //   }
+  // }
+  
 
   return result;
 }

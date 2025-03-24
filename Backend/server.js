@@ -8,36 +8,18 @@ const twitterRoutes = require("./routes/twitterRoutes");
 const apiRoutes = require('./routes/api.js')
 const connectDB = require('./db.js')
 const veridaService = require('./Services/veridaService.js');
-const veridaRoutes = require('./routes/verida.js');
-const walletRoutes = require('./routes/wallet');
-const debugRoutes = require('./routes/debug');
 const chartRoutes = require('./routes/chart.js')
-
-// Import for algorithm testing
-const { evaluateUser, CollectData } = require("./controllers/NewScoreController");
 
 dotenv.config(); // Load .env variables
 
 const app = express();
-
-// CORS Configuration
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 204
-};
-app.use(cors(corsOptions));
-console.log(`✅ CORS configured for origin: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-
+app.use(cors());
 app.use(express.json());
 
 // API Routes
+
 app.use("/api/chart", chartRoutes);
 app.use("/api/twitter", twitterRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use("/api/verida", veridaRoutes);
-app.use("/api/debug", debugRoutes);
 
 // Load blockchain routes
 app.use("/api/blockchain", blockchainRoutes);
@@ -115,7 +97,7 @@ app.get('/auth/callback', async (req, res) => {
     // If we still don't have an auth token, redirect to Verida's authentication
     if (!authToken) {
       // If no token, redirect to Verida's token generator with our frontend as the callback
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174/home/leaderboard';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080/connect/telegram';
       const returnUrl = `${frontendUrl}`;
       
       console.log('No token found, redirecting to Verida token generator with return URL:', returnUrl);
@@ -143,7 +125,7 @@ app.get('/auth/callback', async (req, res) => {
     console.log('Final values - DID:', did, 'Auth Token:', authToken ? `${authToken.substring(0, 10)}...` : 'none');
     
     // Redirect to frontend with the token information
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173/home/leaderboard';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080/connect/telegram';
     const redirectUrl = `${frontendUrl}?did=${encodeURIComponent(did || 'unknown')}&authToken=${encodeURIComponent(authToken)}`;
     
     console.log('Redirecting to frontend with token data:', redirectUrl);
@@ -152,7 +134,7 @@ app.get('/auth/callback', async (req, res) => {
     console.error('Error in auth callback:', error);
     
     // Redirect to frontend with error information
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173/home/leaderboard';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080/connect/telegram';
     res.redirect(`${frontendUrl}?error=auth_error&message=${encodeURIComponent(error.message || 'Unknown error')}`);
   }
 });
@@ -161,75 +143,19 @@ app.get('/auth/callback', async (req, res) => {
 app.get("/", (req, res) => {
   res.json({ message: "Backend is running fine." });
 });
-
-// Add a health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
-});
-
-// Use routes
-app.use('/api/score', scoreRoutes);
-
-// Test route for algorithm
-app.get("/api/test-algorithm", async (req, res) => {
-  try {
-    console.log("Testing algorithm with full controller flow...");
-    
-    // Create mock request with test data
-    const mockReq = {
-      method: "POST",
-      body: {
-        privyId: "test-user-" + Date.now(),
-        twitterUsername: "testuser",
-        walletAddress: "0xTestWalletAddress",
-        userDid: "did:test:123",
-        authToken: "test-token"
-      }
-    };
-    
-    // Create a mock response to capture the output
-    const mockRes = {
-      status: (code) => ({ 
-        json: (data) => {
-          console.log(`Test returned status ${code} with data:`, data);
-          return res.status(code).json(data);
-        }
-      }),
-      json: (data) => {
-        console.log("Test completed successfully");
-        return res.json({
-          success: true,
-          result: data
-        });
-      }
-    };
-    
-    // Call the full controller function
-    await CollectData(mockReq, mockRes);
-  } catch (error) {
-    console.error("Error testing algorithm:", error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 connectDB();
 
+app.use("/api/score", scoreRoutes); 
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`\n======================================`);
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API URL: ${process.env.API_BASE_URL || `http://localhost:${PORT}`}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-  console.log(`======================================\n`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 const startServer = async () => {
   try {
     await Moralis.start({ apiKey: process.env.MORALIS_API_KEY });
-    console.log(`✅ Moralis initialized successfully`);
+    
   } catch (error) {
-    console.error("❌ Error starting Moralis:", error);
+    console.error(" Error starting server:", error);
   }
 };
 

@@ -1,20 +1,102 @@
-/**
- * @deprecated - This file is deprecated and will be removed in future versions.
- * Please use NewScoreController.js for all score-related functionality.
- */
-
 const { getUserDetails } = require("./twitterController.js");
 const { getWalletDetails } = require("./BlockchainController.js");
 const { getTelegramData } = require("../Services/veridaService.js");
 const Score = require("../models/Score");
-const { CollectData, getTotalScore: newGetTotalScore } = require("./NewScoreController");
 
 // ✅ Function to Handle Score Updates (Twitter + Wallets + Telegram)
 async function calculateScore(req, res) {
-    console.warn("DEPRECATED: Using old scoreController.js. Please update to use NewScoreController.js");
-    
-    // Forward to the new controller to maintain consistency
-    return CollectData(req, res);
+    try {
+        console.log("🔍 Request Received:", req.method === "POST" ? req.body : req.params);
+
+        let { privyId, username, address } = req.params;
+        let {email}= req.body
+
+        if (req.method === "POST") {
+            if (!privyId && req.body.privyId) privyId = req.body.privyId;
+            if (!username && req.body.userId) username = req.body.userId;
+            if (!address && req.body.walletAddress) address = req.body.walletAddress;
+        }
+
+        // Use privyId from userDid if not provided directly
+        if (!privyId && req.body.userDid) {
+            privyId = req.body.userDid;
+            console.log(`Using userDid as privyId: ${privyId}`);
+        }
+
+        if (!privyId) {
+            return res.status(400).json({ error: "Provide a Privy ID" });
+        }
+
+        // Extract Telegram-related data
+        const { userDid, authToken } = req.body;
+
+        console.log(`📢 Fetching data for: PrivyID(${privyId}), Twitter(${username || "None"}), Wallet(${address || "None"}), Verida Auth(${authToken ? "Provided" : "None"})`);
+
+        let userData = null;
+        let walletData = {};
+        let telegramData = null;
+
+        // ✅ Fetch Twitter Data
+        if (username) {
+            try {
+                userData = await getUserDetails(username);
+                await updateTwitterScore(privyId, userData);
+            } catch (err) {
+                console.error("❌ Error fetching Twitter user data:", err.message);
+            }
+        }
+
+        // ✅ Fetch Wallet Data imp
+        if (address) {
+            try {
+                walletData = await getWalletDetails(address);
+                await updateWalletScore(privyId, address, walletData);
+            } catch (err) {
+                console.error("❌ Error fetching wallet data:", err.message);
+            }
+        }
+
+        // ✅ Fetch Telegram Data from Verida API
+        if (userDid && authToken) {
+            try {
+                console.log(`📊 Fetching Telegram score for: PrivyID(${privyId}), Verida DID(${userDid})`);
+                
+                // Add timeout to prevent hanging on API calls
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Telegram data fetch timed out")), 15000)
+                );
+                
+                const dataPromise = getTelegramData(userDid, authToken);
+                
+                // Race between the data fetch and the timeout
+                telegramData = await Promise.race([dataPromise, timeoutPromise]);
+                
+                if (telegramData) {
+                    await updateTelegramScore(privyId, telegramData);
+                } else {
+                    console.log("⚠️ No Telegram data returned from Verida service");
+                    // Set default telegram score for users with no data
+                    await setDefaultTelegramScore(privyId);
+                }
+            } catch (err) {
+                console.error("❌ Error fetching Telegram data:", err.message);
+                // Set default telegram score if API fails
+                await setDefaultTelegramScore(privyId);
+            }
+        } else {
+            // If no Telegram data was provided, set a default score
+            await setDefaultTelegramScore(privyId);
+        }
+
+        // ✅ Get updated total score
+        const totalScore = await calculateTotalScore(privyId);
+
+        return res.json({ totalScore });
+
+    } catch (error) {
+        console.error("❌ Error calculating score:", error.message);
+        return res.status(500).json({ error: "Server Error" });
+    }
 }
 
 // ✅ Function to Set Default Telegram Score
@@ -155,10 +237,29 @@ async function calculateTotalScore(privyId) {
 
 // ✅ Function to Fetch Total Score from Database
 async function getTotalScore(req, res) {
-    console.warn("DEPRECATED: Using old scoreController.js. Please update to use NewScoreController.js");
-    
-    // Forward to the new controller to maintain consistency
-    return newGetTotalScore(req, res);
+    try {
+        const { privyId } = req.params;
+
+        if (!privyId) {
+            return res.status(400).json({ error: "Privy ID is required" });
+        }
+
+        console.log(`📢 Fetching total score for PrivyID: ${privyId}`);
+
+        const userEntry = await Score.findOne({ privyId });
+
+        if (!userEntry) {
+            console.log(`⚠️ No score found for PrivyID: ${privyId}`);
+            return res.json({ totalScore: 0 });
+        }
+
+        console.log(`✅ Total Score for ${privyId}: ${userEntry.totalScore}`);
+        return res.json({ totalScore: userEntry.totalScore });
+
+    } catch (error) {
+        console.error("❌ Error fetching total score:", error.message);
+        return res.status(500).json({ error: "Server Error" });
+    }
 }
 
 // ✅ Function to Get Telegram Score
