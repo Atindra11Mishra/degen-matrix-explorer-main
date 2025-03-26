@@ -3,6 +3,117 @@ const { getWalletDetails } = require("./BlockchainController.js");
 const { getTelegramData } = require("../Services/veridaService.js");
 const Score = require("../models/Score");
 
+async function WalletScore(req, res) {
+  try {
+    console.log("🔍 Request Received:", req.method === "POST" ? req.body : req.params);
+
+    let { privyId, address } = req.body;
+
+    if (!privyId) {
+      return res.status(400).json({ error: "Provide a Privy ID" });
+    }
+
+    console.log(`📢 Fetching data for: PrivyID(${privyId}), Wallet(${address || "None"})`);
+
+    let userData = null;
+    let walletData = {};
+
+    // ✅ Fetch Twitter Data
+    if (username) {
+      try {
+        userData = await getUserDetails(username);
+      } catch (err) {
+        console.error("❌ Error fetching Twitter user data:", err.message);
+      }
+    }
+
+    // ✅ Fetch Wallet Data
+    if (address) {
+      try {
+        walletData = await getWalletDetails(address);
+        console.log(walletData);
+      } catch (err) {
+        console.error("❌ Error fetching wallet data:", err.message);
+      }
+    }
+
+    // ✅ Fetch Telegram Data from Verida API (if provided)
+    let telegramData = {};
+    if (userDid && authToken) {
+      try {
+        console.log(`📊 Fetching Telegram score for: PrivyID(${privyId}), Verida DID(${userDid})`);
+        telegramData = await getTelegramData(userDid, authToken);
+      } catch (err) {
+        console.error("❌ Error fetching Telegram data:", err.message);
+      }
+    }
+
+    // Fallback if telegramData is undefined
+    const telegramGroups = telegramData.groups || [];
+    const telegramMessages = telegramData.messages || [];
+    const twitterData= userData
+   
+
+    // Assume calculateScore is imported and defined correctly.
+    const scores = await calculateScore({privyId, twitterData, walletData, telegramGroups, telegramMessages});
+    console.log("this is scores:", scores);
+  
+
+     return res.json({ totalScore:scores.totalScore });
+
+  } catch (error) {
+    console.error("❌ Error calculating score:", error.message);
+    return res.status(500).json({ error: "Server Error" });
+  }
+}
+
+
+async function TwitterScore(req, res) {
+  try {
+    console.log("🔍 Request Received:", req.method === "POST" ? req.body : req.params);
+
+    let { privyId,email, username } = req.body;
+
+
+    if (!privyId) {
+      return res.status(400).json({ error: "Provide a Privy ID" });
+    }
+
+    
+
+    console.log(`📢 Fetching data for: PrivyID(${privyId}), Twitter(${username || "None"})`);
+
+    let userData = null;
+    let walletData = {};
+
+    // ✅ Fetch Twitter Data
+    if (username) {
+      try {
+        userData = await getUserDetails(username);
+      } catch (err) {
+        console.error("❌ Error fetching Twitter user data:", err.message);
+      }
+    }
+
+    // Fallback if telegramData is undefined
+    const telegramGroups = [];
+    const telegramMessages = [];
+    const twitterData= userData
+
+   
+
+    // Assume calculateScore is imported and defined correctly.
+    const scores = await calculateScore({privyId, twitterData, walletData, telegramGroups, telegramMessages});
+    console.log("this is scores:", scores.socialScore);
+  
+              const score =Math.min(scores.socialScore, 50)
+     return res.json({ Twitterscore:score});
+
+  } catch (error) {
+    console.error("❌ Error calculating Twitter score:", error.message);
+    return res.status(500).json({ error: "Server Error" });
+  }
+}
 
 async function CollectData(req, res) {
     try {
@@ -72,8 +183,8 @@ async function CollectData(req, res) {
      
 
       // Assume calculateScore is imported and defined correctly.
-      const scores = calculateScore({privyId, twitterData, walletData, telegramGroups, telegramMessages});
-      console.log("🧮 Final Score Breakdown:", scores);
+      const scores = await calculateScore({privyId, twitterData, walletData, telegramGroups, telegramMessages});
+      console.log("this is scores:", scores);
     
 
        return res.json({ totalScore:scores.totalScore });
@@ -329,66 +440,66 @@ if (twitterData) {
   };
 
   // ✅ Save or update DB
-  // if (privyId) {
-  //   try {
-  //     console.log(`Attempting to find score record for privyId: ${privyId}`);
-  //     let userScore = await Score.findOne({ privyId });
+  if (privyId) {
+    try {
+      console.log(`Attempting to find score record for privyId: ${privyId}`);
+      let userScore = await Score.findOne({ privyId });
       
-  //     if (!userScore) {
-  //       console.log(`No existing score found for ${privyId}, creating new record`);
-  //       userScore = new Score({
-  //         privyId,
-  //         email: email || "unknown@example.com", // Use email with fallback
-  //         username: twitterData?.data?.user?.result?.legacy?.screen_name || "unknown",
-  //         twitterScore: safeScores.socialScore,
-  //         cryptoScore: safeScores.cryptoScore,
-  //         nftScore: safeScores.nftScore,
-  //         telegramScore: safeScores.telegramScore,
-  //         communityScore: safeScores.communityScore,
-  //         totalScore
-  //       });
-  //     } else {
-  //       console.log(`Existing score found for ${privyId}, updating record`);
+      if (!userScore) {
+        console.log(`No existing score found for ${privyId}, creating new record`);
+        userScore = new Score({
+          privyId,
+          email: email || "unknown@example.com", // Use email with fallback
+          username: twitterData?.data?.user?.result?.legacy?.screen_name || "unknown",
+          twitterScore: safeScores.socialScore,
+          cryptoScore: safeScores.cryptoScore,
+          nftScore: safeScores.nftScore,
+          telegramScore: safeScores.telegramScore,
+          communityScore: safeScores.communityScore,
+          totalScore
+        });
+      } else {
+        console.log(`Existing score found for ${privyId}, updating record`);
         
-  //       // Update email if available
-  //       if (email) userScore.email = email;
+        // Update email if available
+        if (email) userScore.email = email;
         
-  //       // Update username if Twitter data is available
-  //       if (twitterData?.data?.user?.result?.legacy?.screen_name) {
-  //         userScore.username = twitterData.data.user.result.legacy.screen_name;
-  //       }
+        // Update username if Twitter data is available
+        if (twitterData?.data?.user?.result?.legacy?.screen_name) {
+          userScore.username = twitterData.data.user.result.legacy.screen_name;
+        }
         
-  //       // Update scores based on available data
-  //       if (twitterData) userScore.twitterScore = safeScores.socialScore;
-  //       if (walletData) {
-  //         userScore.cryptoScore = safeScores.cryptoScore;
-  //         userScore.nftScore = safeScores.nftScore;
-  //       }
-  //       if (telegramGroups && telegramMessages) {
-  //         userScore.telegramScore = safeScores.telegramScore;
-  //         userScore.communityScore = safeScores.communityScore;
-  //       }
+        // Update scores based on available data
+        if (twitterData) userScore.twitterScore = safeScores.socialScore;
+        if (walletData) {
+          userScore.cryptoScore = safeScores.cryptoScore;
+          userScore.nftScore = safeScores.nftScore;
+        }
+        if (telegramGroups && telegramMessages) {
+          userScore.telegramScore = safeScores.telegramScore;
+          userScore.communityScore = safeScores.communityScore;
+        }
 
-  //       userScore.totalScore = totalScore;
-  //     }
+        userScore.totalScore = totalScore;
+      }
 
-  //     console.log(`Saving score to database for ${privyId}`);
-  //     const savedScore = await userScore.save();
-  //     console.log("Score saved successfully:", savedScore);
-  //   } catch (err) {
-  //     console.error("❌ Error saving score to DB:", err.message);
-  //     console.error("Error stack:", err.stack);
+      console.log(`Saving score to database for ${privyId}`);
+      const savedScore = await userScore.save();
+      console.log("Score saved successfully:", savedScore);
+    } catch (err) {
+      console.error("❌ Error saving score to DB:", err.message);
+      console.error("Error stack:", err.stack);
       
-  //     // More specific error checking
-  //     if (err.name === 'ValidationError') {
-  //       console.error("MongoDB validation error. Details:", err.errors);
-  //       // If there are specific validation issues, try to help fix them
-  //       for (let field in err.errors) {
-  //         console.error(`Field '${field}' error:`, err.errors[field].message);
-  //       }
-  //     }
-  //   }
-  // }
+      // More specific error checking
+      if (err.name === 'ValidationError') {
+        console.error("MongoDB validation error. Details:", err.errors);
+        // If there are specific validation issues, try to help fix them
+        for (let field in err.errors) {
+          console.error(`Field '${field}' error:`, err.errors[field].message);
+        }
+      }
+    }
+  }
   
 
   return result;
@@ -509,4 +620,4 @@ function evaluateUser(twitterData, walletData, telegramGroups, telegramMessages)
 // const result = evaluateUser(twitterData, walletData, telegramGroups, telegramMessages);
 // console.log(result);
 
-module.exports = { CollectData };
+module.exports = { CollectData, TwitterScore,WalletScore};

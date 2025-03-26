@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Wallet } from "lucide-react";
-import { useConnect, Connector } from "wagmi";
+import { useConnect, Connector, useAccount } from "wagmi";
 import GlassmorphicCard from "@/components/GlassmorphicCard";
 import CyberButton from "@/components/CyberButton";
 import PageTransition from "@/components/PageTransition";
@@ -19,21 +19,21 @@ const walletTasks: string[] = [
 
 const WalletConnectPage: React.FC = () => {
   const navigate = useNavigate();
+  const { address, isConnected, isConnecting, status } = useAccount();
   const { connect, connectors } = useConnect();
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  
   const [taskStatus, setTaskStatus] = useState<boolean[]>(Array(walletTasks.length).fill(false));
   const [completedScan, setCompletedScan] = useState<boolean>(false);
-  const [walletConnected, setWalletConnected] = useState<boolean>(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
-  const targetScore = 6750;
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const targetScore = 5750;
 
-  // Animation sequence
+  // Animation sequence - runs tasks, shows score, then redirects
   const startAnimationSequence = () => {
     console.log("🚀 Starting animation sequence...");
-    setIsConnecting(true);
+    setIsAnalyzing(true);
     
-    // Step 1: Task animation
+    // Step 1: Task animation - show each task being completed sequentially
     let currentTask = 0;
     const taskInterval = setInterval(() => {
       if (currentTask < walletTasks.length) {
@@ -44,53 +44,51 @@ const WalletConnectPage: React.FC = () => {
         });
         currentTask++;
       } else {
+        // All tasks completed
         clearInterval(taskInterval);
         setCompletedScan(true);
         
-        // Step 2: Score animation 
+        // Step 2: Score animation - increment score until target reached
         let currentScore = 0;
-        const scoreIncrement = Math.ceil(targetScore / 50);
+        const scoreIncrement = Math.ceil(targetScore / 50); // Complete in ~50 steps
         const scoreInterval = setInterval(() => {
           currentScore += scoreIncrement;
+          
           if (currentScore >= targetScore) {
+            // Score animation complete
             currentScore = targetScore;
             clearInterval(scoreInterval);
             
-            // Step 3: Redirect after animation finishes
+            // Step 3: After score is displayed, redirect
+            console.log("⏱️ Score displayed, waiting before redirect...");
             setTimeout(() => {
               console.log("✅ Animation complete, redirecting to /connect/telegram");
               navigate("/connect/telegram");
-            }, 2000);
+            }, 2000); // Wait 2 seconds to let user see the final score
           }
+          
           setScore(currentScore);
-        }, 30);
+        }, 30); // Update score every 30ms for smooth animation
       }
-    }, 800);
+    }, 800); // Show each task completing every 800ms
   };
 
-  // Check if Wallet is already connected on component mount
+  // Start animation immediately when wallet is connected
   useEffect(() => {
-    const storedWallet = localStorage.getItem("walletAddress");
-    if (storedWallet) {
-      console.log("🔄 Wallet Found:", storedWallet);
-      setWalletAddress(storedWallet);
-      setWalletConnected(true);
+    // If we're connected via wagmi and animation hasn't started yet
+    if (isConnected && !isAnalyzing && !completedScan) {
+      console.log("🔄 Wallet Connected:", address);
       
-      // Start animation directly since wallet is already connected
-      if (!isConnecting && !completedScan) {
-        console.log("🔄 Starting animation for already connected wallet");
-        startAnimationSequence();
+      // Store wallet address
+      if (address) {
+        localStorage.setItem("walletAddress", address);
       }
-    }
-  }, []);
-
-  // Backup effect to ensure animation starts if state updates happen asynchronously
-  useEffect(() => {
-    if (walletConnected && !isConnecting && !completedScan) {
-      console.log("🔄 Starting animation for already connected wallet (from dependency effect)");
+      
+      // Start animation sequence immediately when connected
+      console.log("🚀 Starting animation for connected wallet");
       startAnimationSequence();
     }
-  }, [walletConnected, isConnecting, completedScan]);
+  }, [isConnected, address, isAnalyzing, completedScan]);
 
   // Function to Connect Wallet via WalletConnect
   const connectWallet = async () => {
@@ -101,34 +99,20 @@ const WalletConnectPage: React.FC = () => {
         return;
       }
 
-      // Show connecting state immediately
-      setIsConnecting(true);
-
-      const result = await connect({ connector: wcConnector });
-
-      if (result?.data) {
-        console.log("✅ Wallet Connected:", result.data.account);
-        setWalletAddress(result.data.account);
-        localStorage.setItem("walletAddress", result.data.account);
-        setWalletConnected(true);
-        
-        // Start animation immediately after successful connection
-        startAnimationSequence();
-      } else {
-        // Reset if no data returned
-        setIsConnecting(false);
-      }
+      console.log("⏳ Connecting wallet...");
+      
+      // Don't set isAnalyzing here - we'll let the useEffect trigger it
+      // when isConnected becomes true
+      
+      await connect({ connector: wcConnector });
+      // After successful connection, isConnected will be true
+      // The useEffect will automatically trigger the animation sequence
+      
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error("❌ WalletConnect Error:", err.message);
       }
-      setIsConnecting(false); // Reset if there's an error
     }
-    useEffect(() => {
-      if (isConnecting) {
-        startAnimationSequence();
-      }
-    }, [isConnecting]);
   };
 
   return (
@@ -169,7 +153,10 @@ const WalletConnectPage: React.FC = () => {
               transition={{ delay: 0.3 }}
               className="text-2xl font-bold mb-2 text-white"
             >
-              {isConnecting ? "Analyzing Your Wallet" : "Connect Your Wallet"}
+              {isConnecting ? "Connecting Wallet" : 
+               isAnalyzing ? "Analyzing Your Wallet" : 
+               completedScan ? "Analysis Complete" : 
+               "Connect Your Wallet"}
             </motion.h2>
 
             <motion.p
@@ -178,17 +165,19 @@ const WalletConnectPage: React.FC = () => {
               transition={{ delay: 0.4 }}
               className="text-white/70 mb-6"
             >
-              {isConnecting
-                ? "Your on-chain activity defines your degen rank."
-                : "Tap below to connect and verify your on-chain presence."}
+              {isConnecting ? "Please confirm the connection in your wallet app..." :
+               isAnalyzing ? "Your on-chain activity defines your degen rank." :
+               completedScan ? "Your degen score has been calculated!" :
+               "Tap below to connect and verify your on-chain presence."}
             </motion.p>
 
-            {!isConnecting && (
+            {/* Connect Wallet Button - only show when wallet is not connected or connecting */}
+            {!isConnected && !isConnecting && !isAnalyzing && (
               <div className="flex flex-col items-center gap-2 mt-4">
                 <CyberButton
                   onClick={connectWallet}
                   className="w-full"
-                  variant="secondary"
+                  variant="secondary" 
                   icon={<Wallet size={18} />}
                 >
                   Connect Wallet
@@ -201,9 +190,19 @@ const WalletConnectPage: React.FC = () => {
                 </button>
               </div>
             )}
+            
+            {/* Show connecting message when wallet is connecting */}
+            {isConnecting && !isAnalyzing && (
+              <div className="text-center py-2">
+                <div className="flex justify-center mb-4">
+                  <div className="w-6 h-6 border-2 border-cyber-pink border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-white/70">Waiting for wallet connection...</p>
+              </div>
+            )}
 
-            {/* Show Scanning Animation */}
-            {isConnecting && (
+            {/* Show Scanning Animation when analyzing (after connection is established) */}
+            {isAnalyzing && (
               <div className="text-left">
                 {walletTasks.map((task, index) => (
                   <AnimatedCheckmark

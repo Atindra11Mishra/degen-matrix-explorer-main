@@ -26,7 +26,7 @@ const TelegramConnectPage = () => {
   const [completedScan, setCompletedScan] = useState(false);
   const [score, setScore] = useState(0);
   const [veridaStatus, setVeridaStatus] = useState<'disconnected' | 'connected'>('disconnected');
-  const targetScore = 5250;
+  const targetScore = 6250;
   
   // Animation sequence for after Verida connection
   const startAnimationSequence = () => {

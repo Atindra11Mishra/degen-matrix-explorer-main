@@ -5,6 +5,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Twitter } from "lucide-react";
+import axios from "axios";
 import GlassmorphicCard from "@/components/GlassmorphicCard";
 import CyberButton from "@/components/CyberButton";
 import PageTransition from "@/components/PageTransition";
@@ -20,7 +21,8 @@ const twitterTasks = [
   "Detecting Viral Impact Score",
 ];
 
-
+// Default score to use if API fails or returns no score
+const DEFAULT_SCORE = 30;
 
 const TwitterConnectPage = () => {
   const navigate = useNavigate();
@@ -33,106 +35,75 @@ const TwitterConnectPage = () => {
     false,
   ]);
   const [completedScan, setCompletedScan] = useState(false);
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-  const [targetScore, setTargetScore] = useState(0); // Dynamic score from backend
-const [score, setScore] = useState(0); // For animation
-
-const loginWithTwit = async () => {
-  try {
-    const result = await signInWithPopup(auth, twitterProvider);
-    setUser(result.user);
-    setError(null);
-
-    // 🎯 Fetch Twitter score from backend
-    const response = await fetch(`${apiBaseUrl}/api/score/get-score`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        twitterUsername: result.user.displayName
-      })
-    });
-
-    const data = await response.json();
-    const total = Math.round(data?.totalScore || 0);
-
-    setTargetScore(total); // Set real score for animation
-  } catch (err) {
-    setError(err.message);
-  }
-};
-
-  // ✅ Use Privy (if needed)
-  const { authenticated, user: privyUser } = usePrivy();
-
-  // ✅ Fetch score when user logs in
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchScore = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const privyID = user?.email || "guest";
-        const username = user?.displayName || "unknown";
-
-        const response = await fetch(
-          `${apiBaseUrl}/api/score/get-score/${privyID}/${username}/null`,
-          {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-
-        if (!response.ok) throw new Error("Failed to fetch score");
-
-        const data = await response.json();
-        setScore(data?.score || 0);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchScore();
-  }, [user]);
-
-
-  useEffect(() => {
-    if (user && targetScore) {
-      handleConnect();
-    }
-  }, [user, targetScore]);
+  const [targetScore, setTargetScore] = useState(0);
+  const [score, setScore] = useState(0);
   
-  // ✅ Login with Twitter
+  // Use Privy authentication
+  const { authenticated, user: privyUser } = usePrivy();
+  
+  useEffect(() => {
+    console.log("Privy user:", privyUser);
+  }, [privyUser]);
+
+  // Login with Twitter
   const loginWithTwitter = async () => {
     try {
+      setLoading(true);
       const result = await signInWithPopup(auth, twitterProvider);
       setUser(result.user);
       setError(null);
-    } catch (err) {
-      setError(err.message);
+      
+      // Get user details from Privy user and Twitter auth
+      const privyId = privyUser?.id || "guest";
+      const email = privyUser?.email || "";
+      const username = result.user.displayName || "unknown";
+      
+      try {
+        // Get Twitter score from backend using axios
+        console.log("Fetching score with data:", { privyId, email, username });
+        const response = await axios.post('http://localhost:5000/api/score/get-twitterScore', {
+          privyId,
+          email,
+          username
+        });
+        
+        console.log("API response:", response.data.Twitterscore);
+        
+        // Extract score safely with fallback to default
+        let twitterScore = response.data.Twitterscore || 30;
+        
+        
+        // If no valid score found, use default
+        if (!twitterScore || twitterScore <= 0) {
+          console.log("No valid score in API response, using default:", DEFAULT_SCORE);
+          twitterScore = DEFAULT_SCORE;
+        }
+        
+        console.log("Setting target score to:", twitterScore);
+        setTargetScore(twitterScore);
+      } catch (apiError) {
+        console.error("API error:", apiError);
+        console.log("API failed, using default score:", DEFAULT_SCORE);
+        setTargetScore(DEFAULT_SCORE);
+      }
+      
+      setLoading(false);
+    } catch (authErr) {
+      console.error("Auth error:", authErr);
+      setError(authErr.message);
+      setLoading(false);
     }
   };
 
-  // ✅ Logout
-  const logout = async () => {
-    await signOut(auth);
-    setUser(null);
-    setScore(null);
-  };
-
-  // ✅ Handle Connection Process
+  // Start animation and handle connection process
   const handleConnect = () => {
+    console.log("Starting animation with target score:", targetScore);
     setIsConnecting(true);
 
+    // Task animation sequence
     let currentTask = 0;
     const taskInterval = setInterval(() => {
       if (currentTask < taskStatus.length) {
@@ -143,18 +114,22 @@ const loginWithTwit = async () => {
         });
         currentTask++;
       } else {
+        // All tasks completed
         clearInterval(taskInterval);
         setCompletedScan(true);
 
+        // Score animation
         let currentScore = 0;
-        const scoreIncrement = Math.ceil(targetScore / 50);
+        const scoreIncrement = Math.max(1, Math.ceil(targetScore / 50));
         const scoreInterval = setInterval(() => {
           currentScore += scoreIncrement;
           if (currentScore >= targetScore) {
             currentScore = targetScore;
             clearInterval(scoreInterval);
 
+            // Wait 2 seconds and then redirect
             setTimeout(() => {
+              console.log("Animation complete, redirecting with score:", targetScore);
               setTwitterScore(targetScore);
               setTwitterConnected(true);
               navigate("/connect/wallet");
@@ -166,12 +141,17 @@ const loginWithTwit = async () => {
     }, 800);
   };
 
-  // ✅ Execute `handleConnect()` Immediately After Authentication
+  // Start animation when user is authenticated and score is available
   useEffect(() => {
-    if (user) {
-      handleConnect();
+    if (user && !isConnecting && !completedScan) {
+      if (targetScore > 0) {
+        console.log("User authenticated and score received, starting animation");
+        handleConnect();
+      } else {
+        console.log("User authenticated but no score yet");
+      }
     }
-  }, [user]);
+  }, [user, targetScore, isConnecting, completedScan]);
 
   return (
     <PageTransition>
@@ -212,7 +192,7 @@ const loginWithTwit = async () => {
               transition={{ delay: 0.3 }}
               className="text-2xl font-bold mb-2 text-white"
             >
-              Connect Your Twitter
+              {isConnecting ? "Analyzing Your Twitter" : "Connect Your Twitter"}
             </motion.h2>
 
             <motion.p
@@ -221,28 +201,32 @@ const loginWithTwit = async () => {
               transition={{ delay: 0.4 }}
               className="text-white/70 mb-6"
             >
-              Let's analyze your CT engagement, influence & activity.
+              {isConnecting 
+                ? "Calculating your Crypto Twitter influence..." 
+                : "Let's analyze your CT engagement, influence & activity."}
             </motion.p>
 
             {!user ? (
-  <div className="flex flex-col items-center gap-2">
-    <button
-      onClick={loginWithTwitter}
-      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-    >
-      Sign in with Twitter
-    </button>
-    <button
-      onClick={() => navigate("/connect/wallet")}
-      className="mt-4 text-white/80 hover:text-white text-sm underline transition-opacity duration-200 ease-in-out"
-    >
-      Skip for now
-    </button>
-  </div>
-) : (
-  <p className="text-green-500"></p>
-)}
-
+              <div className="flex flex-col items-center gap-2">
+                <CyberButton
+                  onClick={loginWithTwitter}
+                  className="w-full"
+                  variant="primary"
+                  icon={<Twitter size={18} />}
+                  disabled={loading}
+                >
+                  {loading ? "Connecting..." : "Connect Twitter"}
+                </CyberButton>
+                <button
+                  onClick={() => navigate("/connect/wallet")}
+                  className="mt-4 text-white/80 hover:text-white text-sm underline transition-opacity duration-200 ease-in-out"
+                >
+                  Skip for now
+                </button>
+              </div>
+            ) : (
+              <p className="text-green-500"></p>
+            )}
 
             {isConnecting && (
               <div className="text-left">
@@ -268,6 +252,15 @@ const loginWithTwit = async () => {
               </motion.div>
             )}
             
+            {error && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-red-400 mt-4 text-sm"
+              >
+                Error: {error}
+              </motion.p>
+            )}
           </GlassmorphicCard>
           
         </div>
@@ -277,4 +270,3 @@ const loginWithTwit = async () => {
 };
 
 export default TwitterConnectPage;
-
