@@ -5,7 +5,7 @@ const Score = require("../models/Score");
 
 async function WalletScore(req, res) {
   try {
-    console.log("🔍 Request Received:", req.method === "POST" ? req.body : req.params);
+    
 
     let { privyId, address } = req.body;
 
@@ -17,15 +17,6 @@ async function WalletScore(req, res) {
 
     let userData = null;
     let walletData = {};
-
-    // ✅ Fetch Twitter Data
-    if (username) {
-      try {
-        userData = await getUserDetails(username);
-      } catch (err) {
-        console.error("❌ Error fetching Twitter user data:", err.message);
-      }
-    }
 
     // ✅ Fetch Wallet Data
     if (address) {
@@ -39,14 +30,6 @@ async function WalletScore(req, res) {
 
     // ✅ Fetch Telegram Data from Verida API (if provided)
     let telegramData = {};
-    if (userDid && authToken) {
-      try {
-        console.log(`📊 Fetching Telegram score for: PrivyID(${privyId}), Verida DID(${userDid})`);
-        telegramData = await getTelegramData(userDid, authToken);
-      } catch (err) {
-        console.error("❌ Error fetching Telegram data:", err.message);
-      }
-    }
 
     // Fallback if telegramData is undefined
     const telegramGroups = telegramData.groups || [];
@@ -59,7 +42,7 @@ async function WalletScore(req, res) {
     console.log("this is scores:", scores);
   
 
-     return res.json({ totalScore:scores.totalScore });
+     return res.json({ WalletScore:scores.cryptoScore+scores.nftScore });
 
   } catch (error) {
     console.error("❌ Error calculating score:", error.message);
